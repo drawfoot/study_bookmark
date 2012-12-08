@@ -13,6 +13,10 @@ ul.tags, ul.tags li {
 	padding: 0;
 }
 
+ul.bookmarks .edit {
+    font-size: 70%;
+}
+
 #tag-cloud {
 	text-align: center;
 }
