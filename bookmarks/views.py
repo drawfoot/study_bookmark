@@ -75,18 +75,33 @@ def _bookmark_save(request, form):
     bookmark.save()
     return bookmark
 
+
 from django.core.exceptions import ObjectDoesNotExist
 @login_required
 def bookmark_save_page(request):
-    # traditional edit
+    # modification/add submitted 
     if request.method == 'POST':
+        ajax = request.POST.has_key('ajax')
         form = BookmarkSaveForm(request.POST)
         if form.is_valid():
             bookmark = _bookmark_save(request, form)
-            return HttpResponseRedirect(
-                '/user/%s/' % request.user.username
-            )
-    # in-place edit
+            # submitted by ajax
+            if ajax:
+                variables = RequestContext(request, {
+                        'bookmarks': [bookmark],
+                        'show_edit': True,
+                        'show_tags': True
+                        })
+                return render_to_response('bookmark_list.html', variables)
+            # submitted traditionally
+            else:
+                return HttpResponseRedirect(
+                    '/user/%s/' % request.user.username
+                )
+        else:
+            if ajax:
+                return HttpResponse('failure')
+    # request to modify data
     elif request.GET.has_key('url'):
         url = request.GET['url']
         title = ''
@@ -94,27 +109,41 @@ def bookmark_save_page(request):
         try:
             link = Link.objects.get(url=url)
             bookmark = Bookmark.objects.get(
-                link=link,
+                link=link, 
                 user=request.user
             )
             title = bookmark.title
-            tags = ''.join(
+            tags = ' '.join(
                 tag.name for tag in bookmark.tag_set.all()
-                )
-        except ObjectDoesNotExist:
+            )
+        except:
             pass
         form = BookmarkSaveForm({
-            'url': url,
-            'title': title,
-            'tags': tags
-        })
-    # create
+                'url': url,
+                'title': title,
+                'tags': tags
+                })
+    # request to add data
     else:
         form = BookmarkSaveForm()
+    
+    # provide form for modification and add 
     variables = RequestContext(request, {
         'form': form
     })
-    return render_to_response('bookmark_save.html', variables)
+    
+    # treat ajax and normal request differently
+    ajax = request.GET.has_key('ajax')
+    if ajax:
+        return render_to_response(
+            'bookmark_save_form.html',
+            variables
+        )
+    else:
+        return render_to_response(
+            'bookmark_save.html',
+            variables
+        )
 
 
 def tag_page(request, tag_name):
